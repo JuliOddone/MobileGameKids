@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Sanrio Slots - ¡El juego de slots más kawaii! Gira con Hello Kitty, Cinnamoroll y Pompompurin">
+    <meta name="theme-color" content="#FFB7C5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>🌸 Sanrio Slots — Kawaii Fortune 🎰</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Floating particles background -->
+    <div id="particles-bg" class="particles-bg"></div>
+
+    <!-- Top HUD Bar -->
+    <header id="hud-bar" class="hud-bar">
+        <div class="hud-left">
+            <div class="hud-item coin-display" id="coin-display">
+                <span class="hud-icon">🪙</span>
+                <span class="hud-value" id="coin-count">1000</span>
+            </div>
+            <div class="hud-item gem-display" id="gem-display">
+                <span class="hud-icon">💎</span>
+                <span class="hud-value" id="gem-count">5</span>
+            </div>
+        </div>
+        <div class="hud-center">
+            <div class="level-badge" id="level-badge">
+                <span class="level-label">Lv</span>
+                <span class="level-number" id="level-number">1</span>
+            </div>
+            <div class="xp-bar-container">
+                <div class="xp-bar" id="xp-bar" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="hud-right">
+            <button class="hud-btn" id="btn-collection" aria-label="Colección">🎀</button>
+            <button class="hud-btn" id="btn-daily" aria-label="Bono diario">🎁</button>
+        </div>
+    </header>
+
+    <!-- Streak Fire Counter -->
+    <div class="streak-container" id="streak-container">
+        <div class="streak-badge hidden" id="streak-badge">
+            <span class="streak-fire">🔥</span>
+            <span class="streak-count" id="streak-count">0</span>
+            <span class="streak-label">RACHA</span>
+        </div>
+    </div>
+
+    <!-- Main Slot Machine -->
+    <main class="slot-machine-area">
+        <div class="slot-machine" id="slot-machine">
+            <!-- Decorative frame -->
+            <div class="slot-frame">
+                <div class="slot-title">
+                    <span class="title-star">✨</span>
+                    <span>Kawaii Fortune</span>
+                    <span class="title-star">✨</span>
+                </div>
+                
+                <!-- Win line indicators -->
+                <div class="win-line-indicator left-indicator">
+                    <div class="indicator-dot"></div>
+                    <div class="indicator-dot"></div>
+                    <div class="indicator-dot"></div>
+                </div>
+
+                <!-- Reels Container -->
+                <div class="reels-viewport">
+                    <div class="reel-container" id="reel-1">
+                        <div class="reel-strip" id="reel-strip-1"></div>
+                    </div>
+                    <div class="reel-divider"></div>
+                    <div class="reel-container" id="reel-2">
+                        <div class="reel-strip" id="reel-strip-2"></div>
+                    </div>
+                    <div class="reel-divider"></div>
+                    <div class="reel-container" id="reel-3">
+                        <div class="reel-strip" id="reel-strip-3"></div>
+                    </div>
+
+                    <!-- Win line overlay -->
+                    <div class="win-line" id="win-line"></div>
+                </div>
+
+                <div class="win-line-indicator right-indicator">
+                    <div class="indicator-dot"></div>
+                    <div class="indicator-dot"></div>
+                    <div class="indicator-dot"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Win Display -->
+        <div class="win-display hidden" id="win-display">
+            <div class="win-amount" id="win-amount">+0</div>
+            <div class="win-label" id="win-label">🪙</div>
+        </div>
+
+        <!-- Near miss tease -->
+        <div class="near-miss-display hidden" id="near-miss-display">
+            <span>¡Casi! 😱</span>
+        </div>
+    </main>
+
+    <!-- Bottom Controls -->
+    <footer class="controls-bar">
+        <!-- Bet Controls -->
+        <div class="bet-section">
+            <button class="bet-btn" id="btn-bet-down" aria-label="Reducir apuesta">−</button>
+            <div class="bet-display">
+                <span class="bet-label">APUESTA</span>
+                <span class="bet-value" id="bet-value">10</span>
+            </div>
+            <button class="bet-btn" id="btn-bet-up" aria-label="Aumentar apuesta">+</button>
+        </div>
+
+        <!-- Spin Button -->
+        <button class="spin-btn" id="btn-spin" aria-label="Girar">
+            <div class="spin-btn-inner">
+                <span class="spin-icon">🌸</span>
+                <span class="spin-text">GIRAR</span>
+            </div>
+            <div class="spin-btn-glow"></div>
+        </button>
+
+        <!-- Auto Spin -->
+        <div class="auto-section">
+            <button class="auto-btn" id="btn-auto" aria-label="Auto Girar">
+                <span class="auto-icon">🔄</span>
+                <span class="auto-label">AUTO</span>
+            </button>
+            <button class="turbo-btn" id="btn-turbo" aria-label="Turbo">
+                <span class="turbo-icon">⚡</span>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Players Winning Ticker -->
+    <div class="ticker-bar" id="ticker-bar">
+        <div class="ticker-content" id="ticker-content"></div>
+    </div>
+
+    <!-- ===== MODALS ===== -->
+
+    <!-- Collection Album Modal -->
+    <div class="modal-overlay hidden" id="modal-collection">
+        <div class="modal-content collection-modal">
+            <div class="modal-header">
+                <h2>🎀 Mi Colección</h2>
+                <button class="modal-close" id="close-collection">✕</button>
+            </div>
+            <div class="collection-progress">
+                <div class="collection-bar">
+                    <div class="collection-fill" id="collection-fill" style="width:0%"></div>
+                </div>
+                <span class="collection-text" id="collection-text">0 / 15</span>
+            </div>
+            <div class="collection-grid" id="collection-grid"></div>
+        </div>
+    </div>
+
+    <!-- Daily Bonus Modal -->
+    <div class="modal-overlay hidden" id="modal-daily">
+        <div class="modal-content daily-modal">
+            <div class="modal-header">
+                <h2>🎁 Bono Diario</h2>
+                <button class="modal-close" id="close-daily">✕</button>
+            </div>
+            <div class="daily-calendar" id="daily-calendar"></div>
+            <button class="claim-btn" id="btn-claim-daily">
+                <span>¡Reclamar!</span>
+                <span class="claim-sparkle">✨</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Big Win Modal -->
+    <div class="modal-overlay hidden" id="modal-bigwin">
+        <div class="modal-content bigwin-modal">
+            <div class="bigwin-stars">⭐✨🌟✨⭐</div>
+            <h2 class="bigwin-title" id="bigwin-title">¡GRAN PREMIO!</h2>
+            <div class="bigwin-amount" id="bigwin-amount">+5000</div>
+            <div class="bigwin-character" id="bigwin-character"></div>
+            <button class="bigwin-continue" id="btn-bigwin-continue">¡Genial! 🎉</button>
+        </div>
+    </div>
+
+    <!-- Level Up Modal -->
+    <div class="modal-overlay hidden" id="modal-levelup">
+        <div class="modal-content levelup-modal">
+            <div class="levelup-sparkles">🌸✨🌸</div>
+            <h2 class="levelup-title">¡Subiste de Nivel!</h2>
+            <div class="levelup-number" id="levelup-number">2</div>
+            <div class="levelup-reward">
+                <span>Recompensa:</span>
+                <span class="levelup-coins" id="levelup-coins">+500 🪙</span>
+            </div>
+            <button class="levelup-continue" id="btn-levelup-continue">¡Sigue girando! 🌸</button>
+        </div>
+    </div>
+
+    <!-- Confetti Canvas -->
+    <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+
+    <script src="game.js"></script>
+</body>
+</html>
