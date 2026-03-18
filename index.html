@@ -14,10 +14,36 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- ===== CINEMATIC INTRO ===== -->
+    <div id="intro-overlay" class="intro-overlay">
+        <div class="intro-content">
+            <div class="intro-logo">
+                <span class="intro-char intro-c1">🐱</span>
+                <span class="intro-char intro-c2">☁️</span>
+                <span class="intro-char intro-c3">🐶</span>
+            </div>
+            <h1 class="intro-title">Kawaii Fortune</h1>
+            <p class="intro-subtitle">Café Sanrio Slots</p>
+            <div class="intro-lore">Bienvenido al café más dulce del mundo…<br>donde cada giro trae magia ✨</div>
+            <button class="intro-start-btn" id="btn-intro-start">
+                <span>¡Entrar al Café!</span>
+                <span class="intro-sparkle">🌸</span>
+            </button>
+        </div>
+        <div class="intro-particles" id="intro-particles"></div>
+    </div>
+
     <!-- Floating particles background -->
     <div id="particles-bg" class="particles-bg"></div>
 
-    <!-- Top HUD Bar -->
+    <!-- ===== EVENT BANNER ===== -->
+    <div class="event-banner" id="event-banner">
+        <span class="event-icon" id="event-icon">⭐</span>
+        <span class="event-text" id="event-text">Semana Cinnamoroll — ¡Payout x2!</span>
+        <span class="event-timer" id="event-timer">6d 23h</span>
+    </div>
+
+    <!-- ===== TOP HUD BAR ===== -->
     <header id="hud-bar" class="hud-bar">
         <div class="hud-left">
             <div class="hud-item coin-display" id="coin-display">
@@ -30,6 +56,10 @@
             </div>
         </div>
         <div class="hud-center">
+            <div class="vip-badge" id="vip-badge" title="VIP Bronce">
+                <span class="vip-tier-icon">🥉</span>
+                <span class="vip-tier-name" id="vip-tier-name">Bronce</span>
+            </div>
             <div class="level-badge" id="level-badge">
                 <span class="level-label">Lv</span>
                 <span class="level-number" id="level-number">1</span>
@@ -39,53 +69,79 @@
             </div>
         </div>
         <div class="hud-right">
+            <button class="hud-btn" id="btn-darkmode" aria-label="Modo oscuro">🌙</button>
+            <button class="hud-btn" id="btn-missions" aria-label="Misiones">📋</button>
             <button class="hud-btn" id="btn-collection" aria-label="Colección">🎀</button>
             <button class="hud-btn" id="btn-daily" aria-label="Bono diario">🎁</button>
         </div>
     </header>
 
-    <!-- Streak Fire Counter -->
+    <!-- ===== SECONDARY NAV ===== -->
+    <nav class="secondary-nav">
+        <button class="nav-pill" id="btn-tournament" aria-label="Torneo">🏆 <span>Torneo</span></button>
+        <button class="nav-pill" id="btn-seasonpass" aria-label="Pase">🎫 <span>Pase</span></button>
+        <button class="nav-pill" id="btn-achievements" aria-label="Logros">🏅 <span>Logros</span></button>
+        <button class="nav-pill" id="btn-lore" aria-label="Historia">📖 <span>Café</span></button>
+        <button class="nav-pill" id="btn-vip" aria-label="VIP">👑 <span>VIP</span></button>
+    </nav>
+
+    <!-- Streak & Cascade -->
     <div class="streak-container" id="streak-container">
         <div class="streak-badge hidden" id="streak-badge">
             <span class="streak-fire">🔥</span>
             <span class="streak-count" id="streak-count">0</span>
             <span class="streak-label">RACHA</span>
         </div>
+        <div class="cascade-badge hidden" id="cascade-badge">
+            <span class="cascade-icon">💥</span>
+            <span class="cascade-multi" id="cascade-multi">x2</span>
+            <span class="cascade-label">CASCADE</span>
+        </div>
     </div>
 
-    <!-- Main Slot Machine -->
+    <!-- ===== MAIN SLOT MACHINE ===== -->
     <main class="slot-machine-area">
+        <!-- Character Power Flash -->
+        <div class="power-flash hidden" id="power-flash">
+            <span class="power-char" id="power-char"></span>
+            <span class="power-name" id="power-name"></span>
+        </div>
+
         <div class="slot-machine" id="slot-machine">
-            <!-- Decorative frame -->
             <div class="slot-frame">
                 <div class="slot-title">
                     <span class="title-star">✨</span>
                     <span>Kawaii Fortune</span>
                     <span class="title-star">✨</span>
                 </div>
-                
-                <!-- Win line indicators -->
+
                 <div class="win-line-indicator left-indicator">
                     <div class="indicator-dot"></div>
                     <div class="indicator-dot"></div>
                     <div class="indicator-dot"></div>
                 </div>
 
-                <!-- Reels Container -->
                 <div class="reels-viewport">
-                    <div class="reel-container" id="reel-1">
-                        <div class="reel-strip" id="reel-strip-1"></div>
+                    <div class="reel-wrapper">
+                        <div class="reel-container" id="reel-1">
+                            <div class="reel-strip" id="reel-strip-1"></div>
+                        </div>
+                        <button class="hold-btn hidden" id="hold-btn-1" aria-label="Congelar rodillo 1">🔒 HOLD</button>
                     </div>
                     <div class="reel-divider"></div>
-                    <div class="reel-container" id="reel-2">
-                        <div class="reel-strip" id="reel-strip-2"></div>
+                    <div class="reel-wrapper">
+                        <div class="reel-container" id="reel-2">
+                            <div class="reel-strip" id="reel-strip-2"></div>
+                        </div>
+                        <button class="hold-btn hidden" id="hold-btn-2" aria-label="Congelar rodillo 2">🔒 HOLD</button>
                     </div>
                     <div class="reel-divider"></div>
-                    <div class="reel-container" id="reel-3">
-                        <div class="reel-strip" id="reel-strip-3"></div>
+                    <div class="reel-wrapper">
+                        <div class="reel-container" id="reel-3">
+                            <div class="reel-strip" id="reel-strip-3"></div>
+                        </div>
+                        <button class="hold-btn hidden" id="hold-btn-3" aria-label="Congelar rodillo 3">🔒 HOLD</button>
                     </div>
-
-                    <!-- Win line overlay -->
                     <div class="win-line" id="win-line"></div>
                 </div>
 
@@ -97,21 +153,18 @@
             </div>
         </div>
 
-        <!-- Win Display -->
         <div class="win-display hidden" id="win-display">
             <div class="win-amount" id="win-amount">+0</div>
             <div class="win-label" id="win-label">🪙</div>
         </div>
 
-        <!-- Near miss tease -->
         <div class="near-miss-display hidden" id="near-miss-display">
             <span>¡Casi! 😱</span>
         </div>
     </main>
 
-    <!-- Bottom Controls -->
+    <!-- ===== BOTTOM CONTROLS ===== -->
     <footer class="controls-bar">
-        <!-- Bet Controls -->
         <div class="bet-section">
             <button class="bet-btn" id="btn-bet-down" aria-label="Reducir apuesta">−</button>
             <div class="bet-display">
@@ -121,16 +174,14 @@
             <button class="bet-btn" id="btn-bet-up" aria-label="Aumentar apuesta">+</button>
         </div>
 
-        <!-- Spin Button -->
         <button class="spin-btn" id="btn-spin" aria-label="Girar">
             <div class="spin-btn-inner">
                 <span class="spin-icon">🌸</span>
-                <span class="spin-text">GIRAR</span>
+                <span class="spin-text" id="spin-text">GIRAR</span>
             </div>
             <div class="spin-btn-glow"></div>
         </button>
 
-        <!-- Auto Spin -->
         <div class="auto-section">
             <button class="auto-btn" id="btn-auto" aria-label="Auto Girar">
                 <span class="auto-icon">🔄</span>
@@ -142,46 +193,35 @@
         </div>
     </footer>
 
-    <!-- Players Winning Ticker -->
+    <!-- Ticker -->
     <div class="ticker-bar" id="ticker-bar">
         <div class="ticker-content" id="ticker-content"></div>
     </div>
 
     <!-- ===== MODALS ===== -->
 
-    <!-- Collection Album Modal -->
+    <!-- Collection -->
     <div class="modal-overlay hidden" id="modal-collection">
         <div class="modal-content collection-modal">
-            <div class="modal-header">
-                <h2>🎀 Mi Colección</h2>
-                <button class="modal-close" id="close-collection">✕</button>
-            </div>
+            <div class="modal-header"><h2>🎀 Mi Colección</h2><button class="modal-close" id="close-collection">✕</button></div>
             <div class="collection-progress">
-                <div class="collection-bar">
-                    <div class="collection-fill" id="collection-fill" style="width:0%"></div>
-                </div>
+                <div class="collection-bar"><div class="collection-fill" id="collection-fill" style="width:0%"></div></div>
                 <span class="collection-text" id="collection-text">0 / 15</span>
             </div>
             <div class="collection-grid" id="collection-grid"></div>
         </div>
     </div>
 
-    <!-- Daily Bonus Modal -->
+    <!-- Daily Bonus -->
     <div class="modal-overlay hidden" id="modal-daily">
         <div class="modal-content daily-modal">
-            <div class="modal-header">
-                <h2>🎁 Bono Diario</h2>
-                <button class="modal-close" id="close-daily">✕</button>
-            </div>
+            <div class="modal-header"><h2>🎁 Bono Diario</h2><button class="modal-close" id="close-daily">✕</button></div>
             <div class="daily-calendar" id="daily-calendar"></div>
-            <button class="claim-btn" id="btn-claim-daily">
-                <span>¡Reclamar!</span>
-                <span class="claim-sparkle">✨</span>
-            </button>
+            <button class="claim-btn" id="btn-claim-daily"><span>¡Reclamar!</span><span class="claim-sparkle">✨</span></button>
         </div>
     </div>
 
-    <!-- Big Win Modal -->
+    <!-- Big Win -->
     <div class="modal-overlay hidden" id="modal-bigwin">
         <div class="modal-content bigwin-modal">
             <div class="bigwin-stars">⭐✨🌟✨⭐</div>
@@ -192,17 +232,92 @@
         </div>
     </div>
 
-    <!-- Level Up Modal -->
+    <!-- Level Up -->
     <div class="modal-overlay hidden" id="modal-levelup">
         <div class="modal-content levelup-modal">
             <div class="levelup-sparkles">🌸✨🌸</div>
             <h2 class="levelup-title">¡Subiste de Nivel!</h2>
             <div class="levelup-number" id="levelup-number">2</div>
-            <div class="levelup-reward">
-                <span>Recompensa:</span>
-                <span class="levelup-coins" id="levelup-coins">+500 🪙</span>
-            </div>
+            <div class="levelup-reward"><span>Recompensa:</span><span class="levelup-coins" id="levelup-coins">+500 🪙</span></div>
             <button class="levelup-continue" id="btn-levelup-continue">¡Sigue girando! 🌸</button>
+        </div>
+    </div>
+
+    <!-- Bonus Round -->
+    <div class="modal-overlay hidden" id="modal-bonus">
+        <div class="modal-content bonus-modal">
+            <h2 class="bonus-title">🎁 ¡Bonus Round! 🎁</h2>
+            <p class="bonus-subtitle">¡Elige 3 regalos del Café Kawaii!</p>
+            <div class="bonus-picks-left">Selecciones: <span id="bonus-picks">3</span></div>
+            <div class="bonus-grid" id="bonus-grid"></div>
+            <div class="bonus-total">Total ganado: <span id="bonus-total">0</span> 🪙</div>
+            <button class="bigwin-continue hidden" id="btn-bonus-done">¡Recoger! 🎉</button>
+        </div>
+    </div>
+
+    <!-- Missions -->
+    <div class="modal-overlay hidden" id="modal-missions">
+        <div class="modal-content missions-modal">
+            <div class="modal-header"><h2>📋 Misiones</h2><button class="modal-close" id="close-missions">✕</button></div>
+            <div class="missions-list" id="missions-list"></div>
+        </div>
+    </div>
+
+    <!-- Tournament -->
+    <div class="modal-overlay hidden" id="modal-tournament">
+        <div class="modal-content tournament-modal">
+            <div class="modal-header"><h2>🏆 Torneo Semanal</h2><button class="modal-close" id="close-tournament">✕</button></div>
+            <div class="tournament-info">
+                <span>Tu mejor giro: <strong id="tournament-best">0</strong> 🪙</span>
+                <span class="tournament-timer" id="tournament-reset">Reinicia en 6d</span>
+            </div>
+            <div class="tournament-table" id="tournament-table"></div>
+            <div class="tournament-prizes">
+                <h3>Premios</h3>
+                <div class="prize-row">🥇 Top 1: <strong>10,000 🪙 + 💎x10</strong></div>
+                <div class="prize-row">🥈 Top 3: <strong>5,000 🪙 + 💎x5</strong></div>
+                <div class="prize-row">🥉 Top 10: <strong>2,000 🪙 + 💎x2</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIP Club -->
+    <div class="modal-overlay hidden" id="modal-vip">
+        <div class="modal-content vip-modal">
+            <div class="modal-header"><h2>👑 Club VIP</h2><button class="modal-close" id="close-vip">✕</button></div>
+            <div class="vip-current" id="vip-current-display"></div>
+            <div class="vip-tiers" id="vip-tiers"></div>
+        </div>
+    </div>
+
+    <!-- Season Pass -->
+    <div class="modal-overlay hidden" id="modal-seasonpass">
+        <div class="modal-content seasonpass-modal">
+            <div class="modal-header"><h2>🎫 Pase de Temporada</h2><button class="modal-close" id="close-seasonpass">✕</button></div>
+            <div class="sp-progress-bar"><div class="sp-fill" id="sp-fill" style="width:0%"></div></div>
+            <div class="sp-tier-info">Nivel <span id="sp-level">1</span>/30</div>
+            <div class="sp-track" id="sp-track"></div>
+        </div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="modal-overlay hidden" id="modal-achievements">
+        <div class="modal-content achievements-modal">
+            <div class="modal-header"><h2>🏅 Logros</h2><button class="modal-close" id="close-achievements">✕</button></div>
+            <div class="achievements-count">Completados: <span id="achievements-done">0</span> / <span id="achievements-total">50</span></div>
+            <div class="achievements-list" id="achievements-list"></div>
+        </div>
+    </div>
+
+    <!-- Lore / Story -->
+    <div class="modal-overlay hidden" id="modal-lore">
+        <div class="modal-content lore-modal">
+            <div class="modal-header"><h2>📖 Café Kawaii Fortune</h2><button class="modal-close" id="close-lore">✕</button></div>
+            <div class="lore-story">
+                <p class="lore-intro">En lo más profundo de un callejón mágico de Tokio, existe un café donde los sueños se hacen realidad con cada giro de la ruleta encantada…</p>
+                <p>Cada personaje del café posee un <strong>poder especial</strong> que se activa aleatoriamente durante tus giros.</p>
+            </div>
+            <div class="lore-characters" id="lore-characters"></div>
         </div>
     </div>
 
@@ -210,5 +325,7 @@
     <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
 
     <script src="game.js"></script>
+    <script src="gameplay.js"></script>
+    <script src="features.js"></script>
 </body>
 </html>

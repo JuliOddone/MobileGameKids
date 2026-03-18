@@ -1,1045 +1,199 @@
-/* ============================================
-   SANRIO SLOTS — KAWAII FORTUNE
-   Game Engine
-   ============================================ */
-
-(function () {
-    'use strict';
-
-    // ==========================================
-    // CONFIGURATION
-    // ==========================================
-    const CONFIG = {
-        symbols: [
-            { id: 'hello_kitty', name: 'Hello Kitty', img: 'assets/hello_kitty.png', weight: 20, payout: 5 },
-            { id: 'cinnamoroll', name: 'Cinnamoroll', img: 'assets/cinnamoroll.png', weight: 20, payout: 5 },
-            { id: 'pompompurin', name: 'Pompompurin', img: 'assets/pompompurin.png', weight: 20, payout: 5 },
-            { id: 'my_melody', name: 'My Melody', img: 'assets/my_melody.png', weight: 18, payout: 8 },
-            { id: 'keroppi', name: 'Keroppi', img: 'assets/keroppi.png', weight: 15, payout: 10 },
-            { id: 'wild', name: 'Wild ✨', img: 'assets/wild.png', weight: 5, payout: 15, isWild: true },
-            { id: 'bonus', name: 'Bonus 🎁', img: null, payout: 25, weight: 2, isBonus: true },
-        ],
-        betLevels: [5, 10, 25, 50, 100, 250, 500],
-        reelCount: 3,
-        visibleSymbols: 3,  // 3 rows visible
-        spinDuration: 1800,
-        reelDelay: 300,
-        turboSpinDuration: 600,
-        turboReelDelay: 100,
-        nearMissChance: 0.18,
-        streakMultipliers: [1, 1, 1.5, 2, 2.5, 3, 4, 5],
-        xpPerSpin: 10,
-        xpPerWin: 25,
-        xpPerLevel: 200,
-        levelUpBonus: 500,
-        miniJackpotInterval: [40, 60],
-        miniJackpotMultiplier: 20,
-        autoSpinDelay: 800,
-        turboAutoSpinDelay: 300,
-        particleEmojis: ['🌸', '✨', '💖', '⭐', '🎀', '💫', '🌟', '🩷', '♡', '🦋'],
-        tickerNames: ['SakuraFan', 'KawaiiQueen', 'CinnaLover', 'PomPomStar', 'MelodyDream', 'KittyAngel',
-            'StarryHeart', 'PinkCloud', 'BowBunny', 'SweetPaws', 'LuckyClover', 'CuteStorm'],
-    };
-
-    // Collection items: character + outfit variations
-    const COLLECTION = [
-        { id: 'hk_classic', name: 'Hello Kitty Clásica', char: 'hello_kitty', outfit: '🎀', unlocked: false },
-        { id: 'hk_princess', name: 'Hello Kitty Princesa', char: 'hello_kitty', outfit: '👑', unlocked: false },
-        { id: 'hk_star', name: 'Hello Kitty Estrella', char: 'hello_kitty', outfit: '⭐', unlocked: false },
-        { id: 'cn_classic', name: 'Cinnamoroll Clásico', char: 'cinnamoroll', outfit: '☁️', unlocked: false },
-        { id: 'cn_angel', name: 'Cinnamoroll Ángel', char: 'cinnamoroll', outfit: '😇', unlocked: false },
-        { id: 'cn_rainbow', name: 'Cinnamoroll Arcoíris', char: 'cinnamoroll', outfit: '🌈', unlocked: false },
-        { id: 'pp_classic', name: 'Pompompurin Clásico', char: 'pompompurin', outfit: '🧁', unlocked: false },
-        { id: 'pp_chef', name: 'Pompompurin Chef', char: 'pompompurin', outfit: '👨‍🍳', unlocked: false },
-        { id: 'pp_explorer', name: 'Pompompurin Explorador', char: 'pompompurin', outfit: '🗺️', unlocked: false },
-        { id: 'mm_classic', name: 'My Melody Clásica', char: 'my_melody', outfit: '🌷', unlocked: false },
-        { id: 'mm_fairy', name: 'My Melody Hada', char: 'my_melody', outfit: '🧚', unlocked: false },
-        { id: 'mm_night', name: 'My Melody Noche', char: 'my_melody', outfit: '🌙', unlocked: false },
-        { id: 'kp_classic', name: 'Keroppi Clásico', char: 'keroppi', outfit: '🍀', unlocked: false },
-        { id: 'kp_pirate', name: 'Keroppi Pirata', char: 'keroppi', outfit: '🏴‍☠️', unlocked: false },
-        { id: 'kp_sport', name: 'Keroppi Deportista', char: 'keroppi', outfit: '⚽', unlocked: false },
-    ];
-
-    // ==========================================
-    // GAME STATE
-    // ==========================================
-    const state = {
-        coins: 1000,
-        gems: 5,
-        level: 1,
-        xp: 0,
-        betIndex: 1,         // index into CONFIG.betLevels
-        streak: 0,
-        totalSpins: 0,
-        spinsSinceJackpot: 0,
-        nextMiniJackpot: randomInRange(CONFIG.miniJackpotInterval[0], CONFIG.miniJackpotInterval[1]),
-        isSpinning: false,
-        autoSpin: false,
-        turboMode: false,
-        dailyDay: loadDailyProgress(),
-        collection: loadCollection(),
-        reelResults: [null, null, null],
-    };
-
-    // ==========================================
-    // DOM REFS
-    // ==========================================
-    const DOM = {};
-    function cacheDom() {
-        DOM.coinCount = document.getElementById('coin-count');
-        DOM.gemCount = document.getElementById('gem-count');
-        DOM.levelNumber = document.getElementById('level-number');
-        DOM.xpBar = document.getElementById('xp-bar');
-        DOM.levelBadge = document.getElementById('level-badge');
-        DOM.streakBadge = document.getElementById('streak-badge');
-        DOM.streakCount = document.getElementById('streak-count');
-        DOM.betValue = document.getElementById('bet-value');
-        DOM.btnSpin = document.getElementById('btn-spin');
-        DOM.btnBetUp = document.getElementById('btn-bet-up');
-        DOM.btnBetDown = document.getElementById('btn-bet-down');
-        DOM.btnAuto = document.getElementById('btn-auto');
-        DOM.btnTurbo = document.getElementById('btn-turbo');
-        DOM.btnCollection = document.getElementById('btn-collection');
-        DOM.btnDaily = document.getElementById('btn-daily');
-        DOM.winDisplay = document.getElementById('win-display');
-        DOM.winAmount = document.getElementById('win-amount');
-        DOM.winLine = document.getElementById('win-line');
-        DOM.nearMissDisplay = document.getElementById('near-miss-display');
-        DOM.reelStrips = [
-            document.getElementById('reel-strip-1'),
-            document.getElementById('reel-strip-2'),
-            document.getElementById('reel-strip-3'),
-        ];
-        DOM.reelContainers = [
-            document.getElementById('reel-1'),
-            document.getElementById('reel-2'),
-            document.getElementById('reel-3'),
-        ];
-        DOM.modalCollection = document.getElementById('modal-collection');
-        DOM.collectionGrid = document.getElementById('collection-grid');
-        DOM.collectionFill = document.getElementById('collection-fill');
-        DOM.collectionText = document.getElementById('collection-text');
-        DOM.modalDaily = document.getElementById('modal-daily');
-        DOM.dailyCalendar = document.getElementById('daily-calendar');
-        DOM.btnClaimDaily = document.getElementById('btn-claim-daily');
-        DOM.modalBigwin = document.getElementById('modal-bigwin');
-        DOM.bigwinTitle = document.getElementById('bigwin-title');
-        DOM.bigwinAmount = document.getElementById('bigwin-amount');
-        DOM.bigwinCharacter = document.getElementById('bigwin-character');
-        DOM.modalLevelup = document.getElementById('modal-levelup');
-        DOM.levelupNumber = document.getElementById('levelup-number');
-        DOM.levelupCoins = document.getElementById('levelup-coins');
-        DOM.confettiCanvas = document.getElementById('confetti-canvas');
-        DOM.particlesBg = document.getElementById('particles-bg');
-        DOM.tickerContent = document.getElementById('ticker-content');
-        DOM.slotMachine = document.getElementById('slot-machine');
-    }
-
-    // ==========================================
-    // UTILITIES
-    // ==========================================
-    function randomInRange(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
-    function weightedRandom(symbols) {
-        const totalWeight = symbols.reduce((sum, s) => sum + s.weight, 0);
-        let rand = Math.random() * totalWeight;
-        for (const s of symbols) {
-            rand -= s.weight;
-            if (rand <= 0) return s;
-        }
-        return symbols[0];
-    }
-
-    function formatNumber(n) {
-        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-        if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-        return n.toString();
-    }
-
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    function loadDailyProgress() {
-        try {
-            const data = JSON.parse(localStorage.getItem('sanrio_daily'));
-            if (data && data.date === new Date().toDateString()) return data.day;
-        } catch (e) { }
-        return 0;
-    }
-
-    function saveDailyProgress() {
-        localStorage.setItem('sanrio_daily', JSON.stringify({
-            date: new Date().toDateString(),
-            day: state.dailyDay
-        }));
-    }
-
-    function loadCollection() {
-        try {
-            const data = JSON.parse(localStorage.getItem('sanrio_collection'));
-            if (data && Array.isArray(data)) {
-                COLLECTION.forEach((item, i) => {
-                    if (data[i]) item.unlocked = true;
-                });
-            }
-        } catch (e) { }
-        return COLLECTION;
-    }
-
-    function saveCollection() {
-        const data = COLLECTION.map(item => item.unlocked);
-        localStorage.setItem('sanrio_collection', JSON.stringify(data));
-    }
-
-    function saveState() {
-        localStorage.setItem('sanrio_state', JSON.stringify({
-            coins: state.coins,
-            gems: state.gems,
-            level: state.level,
-            xp: state.xp,
-            totalSpins: state.totalSpins,
-        }));
-    }
-
-    function loadState() {
-        try {
-            const data = JSON.parse(localStorage.getItem('sanrio_state'));
-            if (data) {
-                state.coins = data.coins || 1000;
-                state.gems = data.gems || 5;
-                state.level = data.level || 1;
-                state.xp = data.xp || 0;
-                state.totalSpins = data.totalSpins || 0;
-            }
-        } catch (e) { }
-    }
-
-    // ==========================================
-    // PARTICLES SYSTEM
-    // ==========================================
-    function initParticles() {
-        const container = DOM.particlesBg;
-        for (let i = 0; i < 20; i++) {
-            const p = document.createElement('div');
-            p.className = 'particle';
-            p.textContent = CONFIG.particleEmojis[Math.floor(Math.random() * CONFIG.particleEmojis.length)];
-            p.style.left = Math.random() * 100 + '%';
-            p.style.animationDuration = (8 + Math.random() * 12) + 's';
-            p.style.animationDelay = (Math.random() * 10) + 's';
-            p.style.fontSize = (14 + Math.random() * 16) + 'px';
-            container.appendChild(p);
-        }
-    }
-
-    // ==========================================
-    // TICKER (Social Proof)
-    // ==========================================
-    function initTicker() {
-        const content = DOM.tickerContent;
-        const items = [];
-        for (let i = 0; i < 12; i++) {
-            const name = CONFIG.tickerNames[Math.floor(Math.random() * CONFIG.tickerNames.length)];
-            const amount = [50, 100, 200, 500, 1000, 2500, 5000][Math.floor(Math.random() * 7)];
-            const char = ['🐱', '🐶', '🐰', '🐸', '☁️'][Math.floor(Math.random() * 5)];
-            items.push(`<span class="ticker-item">${char} <span class="ticker-name">${name}</span> ganó <span class="ticker-amount">+${amount} 🪙</span></span>`);
-        }
-        content.innerHTML = items.join('');
-    }
-
-    // ==========================================
-    // REEL SYSTEM
-    // ==========================================
-    const REEL_SYMBOL_COUNT = 30; // symbols per reel strip
-    let reelPositions = [0, 0, 0];
-
-    function createSymbolElement(symbol) {
-        const div = document.createElement('div');
-        div.className = 'reel-symbol';
-        div.dataset.symbolId = symbol.id;
-
-        if (symbol.img) {
-            const img = document.createElement('img');
-            img.src = symbol.img;
-            img.alt = symbol.name;
-            img.loading = 'eager';
-            div.appendChild(img);
-        } else {
-            // Bonus symbol — CSS fallback
-            const emoji = document.createElement('div');
-            emoji.className = 'bonus-emoji';
-            div.appendChild(emoji);
-        }
-        return div;
-    }
-
-    function populateReel(stripEl) {
-        stripEl.innerHTML = '';
-        for (let i = 0; i < REEL_SYMBOL_COUNT; i++) {
-            const sym = weightedRandom(CONFIG.symbols);
-            stripEl.appendChild(createSymbolElement(sym));
-        }
-    }
-
-    function initReels() {
-        DOM.reelStrips.forEach((strip) => {
-            populateReel(strip);
-        });
-        // Show initial position (middle row = index 1)
-        DOM.reelStrips.forEach((strip, i) => {
-            const reelContainer = DOM.reelContainers[i];
-            const symbolHeight = reelContainer.clientHeight / CONFIG.visibleSymbols;
-            strip.style.transform = `translateY(0px)`;
-            reelPositions[i] = 0;
-        });
-    }
-
-    function getSymbolHeight(reelIndex) {
-        return DOM.reelContainers[reelIndex].clientHeight / CONFIG.visibleSymbols;
-    }
-
-    // ==========================================
-    // SPIN ENGINE
-    // ==========================================
-    async function spin() {
-        if (state.isSpinning) return;
-
-        const bet = CONFIG.betLevels[state.betIndex];
-        if (state.coins < bet) {
-            shakeElement(DOM.coinCount.parentElement);
-            return;
-        }
-
-        state.isSpinning = true;
-        state.coins -= bet;
-        state.totalSpins++;
-        state.spinsSinceJackpot++;
-        updateHUD();
-
-        // Hide previous displays
-        hideWinDisplay();
-        hideNearMiss();
-        DOM.winLine.classList.remove('active');
-        clearWinningSymbols();
-
-        // Determine results
-        const results = determineResults();
-        state.reelResults = results;
-
-        DOM.btnSpin.classList.add('spinning');
-        DOM.btnSpin.disabled = true;
-
-        const spinDuration = state.turboMode ? CONFIG.turboSpinDuration : CONFIG.spinDuration;
-        const reelDelay = state.turboMode ? CONFIG.turboReelDelay : CONFIG.reelDelay;
-
-        // Animate each reel
-        const promises = DOM.reelStrips.map((strip, i) => {
-            return animateReel(strip, i, results[i], spinDuration + (i * reelDelay));
-        });
-
-        await Promise.all(promises);
-
-        DOM.btnSpin.classList.remove('spinning');
-        DOM.btnSpin.disabled = false;
-        state.isSpinning = false;
-
-        // Evaluate results
-        await evaluateResults(results, bet);
-
-        // XP per spin
-        addXP(CONFIG.xpPerSpin);
-
-        // Save
-        saveState();
-
-        // Auto-spin
-        if (state.autoSpin && state.coins >= CONFIG.betLevels[state.betIndex]) {
-            const delay = state.turboMode ? CONFIG.turboAutoSpinDelay : CONFIG.autoSpinDelay;
-            setTimeout(() => { if (state.autoSpin) spin(); }, delay);
-        } else if (state.autoSpin && state.coins < CONFIG.betLevels[state.betIndex]) {
-            state.autoSpin = false;
-            DOM.btnAuto.classList.remove('active');
-        }
-    }
-
-    function determineResults() {
-        const results = [];
-
-        // Check for mini jackpot
-        if (state.spinsSinceJackpot >= state.nextMiniJackpot) {
-            // Force 3-of-a-kind win
-            const sym = weightedRandom(CONFIG.symbols.filter(s => !s.isBonus));
-            results.push(sym, sym, sym);
-            state.spinsSinceJackpot = 0;
-            state.nextMiniJackpot = randomInRange(CONFIG.miniJackpotInterval[0], CONFIG.miniJackpotInterval[1]);
-            return results;
-        }
-
-        // Normal spin
-        for (let i = 0; i < CONFIG.reelCount; i++) {
-            results.push(weightedRandom(CONFIG.symbols));
-        }
-
-        // Near miss manipulation
-        if (!isWin(results) && Math.random() < CONFIG.nearMissChance) {
-            // Make first 2 reels match
-            results[1] = { ...results[0] };
-            // Third reel is different
-            let diff = weightedRandom(CONFIG.symbols.filter(s => s.id !== results[0].id && !s.isWild));
-            results[2] = diff;
-        }
-
-        return results;
-    }
-
-    function isWin(results) {
-        const ids = results.map(r => r.id);
-        const hasWild = results.some(r => r.isWild);
-
-        // 3 of a kind
-        if (ids[0] === ids[1] && ids[1] === ids[2]) return true;
-
-        // 2 match + wild
-        if (hasWild) {
-            const nonWild = results.filter(r => !r.isWild);
-            if (nonWild.length <= 1) return true;
-            if (nonWild.length === 2 && nonWild[0].id === nonWild[1].id) return true;
-        }
-
-        // 3 bonus
-        if (results.filter(r => r.isBonus).length >= 2) return true;
-
-        return false;
-    }
-
-    function animateReel(strip, reelIndex, targetSymbol, duration) {
-        return new Promise(resolve => {
-            const symbolHeight = getSymbolHeight(reelIndex);
-
-            // Repopulate reel with random symbols + target in middle
-            strip.innerHTML = '';
-            const totalSymbols = REEL_SYMBOL_COUNT;
-            const targetIndex = totalSymbols - CONFIG.visibleSymbols + 1; // Place target at center row
-
-            for (let i = 0; i < totalSymbols; i++) {
-                if (i === targetIndex) {
-                    strip.appendChild(createSymbolElement(targetSymbol));
-                } else {
-                    strip.appendChild(createSymbolElement(weightedRandom(CONFIG.symbols)));
-                }
-            }
-
-            // Start from top
-            strip.style.transition = 'none';
-            strip.style.transform = 'translateY(0px)';
-
-            // Force reflow
-            strip.offsetHeight;
-
-            // Animate down to targetIndex
-            const targetOffset = -(targetIndex - 1) * symbolHeight;
-
-            strip.style.transition = `transform ${duration}ms cubic-bezier(0.15, 0.85, 0.35, 1.02)`;
-            strip.style.transform = `translateY(${targetOffset}px)`;
-
-            setTimeout(resolve, duration);
-        });
-    }
-
-    // ==========================================
-    // RESULT EVALUATION
-    // ==========================================
-    async function evaluateResults(results, bet) {
-        const win = isWin(results);
-        const isNearMiss = !win && results[0].id === results[1].id;
-
-        if (win) {
-            const payout = calculatePayout(results, bet);
-            const isJackpot = payout >= bet * 10;
-            const isBonusWin = results.filter(r => r.isBonus).length >= 2;
-
-            // Streak
-            state.streak++;
-            updateStreak();
-
-            // Win effects
-            highlightWinningSymbols();
-            DOM.winLine.classList.add('active');
-            showWinDisplay(payout);
-            screenShake();
-            createFlash();
-            spawnFlyingCoins(payout);
-
-            // XP bonus for winning
-            addXP(CONFIG.xpPerWin);
-
-            // Add coins
-            state.coins += payout;
-            updateHUD();
-
-            // Collection unlock chance on win
-            if (Math.random() < 0.15 || isBonusWin) {
-                tryUnlockCollectionItem();
-            }
-
-            // Big win / Jackpot modal
-            if (isJackpot) {
-                await sleep(800);
-                showBigWin(payout, results[0]);
-            }
-
-            // Confetti on big wins
-            if (payout >= bet * 5) {
-                launchConfetti();
-            }
-        } else {
-            // Reset streak
-            state.streak = 0;
-            updateStreak();
-
-            if (isNearMiss) {
-                showNearMiss();
-            }
-        }
-    }
-
-    function calculatePayout(results, bet) {
-        let multiplier = 0;
-        const ids = results.map(r => r.id);
-        const hasWild = results.some(r => r.isWild);
-        const bonusCount = results.filter(r => r.isBonus).length;
-
-        // 3 of a kind
-        if (ids[0] === ids[1] && ids[1] === ids[2]) {
-            multiplier = results[0].payout;
-            if (results[0].isWild) multiplier = 50; // 3 wilds = mega
-        }
-        // 2 match + wild
-        else if (hasWild) {
-            const nonWild = results.filter(r => !r.isWild);
-            if (nonWild.length <= 1) {
-                multiplier = 20;
-            } else if (nonWild[0].id === nonWild[1].id) {
-                multiplier = nonWild[0].payout * 1.5;
-            }
-        }
-        // Bonus
-        else if (bonusCount >= 2) {
-            multiplier = CONFIG.symbols.find(s => s.isBonus).payout * bonusCount;
-        }
-
-        // Apply streak multiplier
-        const streakIdx = Math.min(state.streak, CONFIG.streakMultipliers.length - 1);
-        const streakMul = CONFIG.streakMultipliers[streakIdx];
-
-        const total = Math.floor(bet * multiplier * streakMul);
-
-        // "Loss disguised as win" — sometimes return less than bet but show as win
-        return Math.max(total, 1);
-    }
-
-    // ==========================================
-    // VISUAL EFFECTS
-    // ==========================================
-    function highlightWinningSymbols() {
-        DOM.reelStrips.forEach(strip => {
-            const symbols = strip.querySelectorAll('.reel-symbol');
-            // The visual center (middle row)
-            const centerIdx = Math.floor(symbols.length / 2);
-            // Find the symbol that's currently visible in middle
-            // Due to our animation, the target is at index REEL_SYMBOL_COUNT - 2
-            const targetIdx = REEL_SYMBOL_COUNT - CONFIG.visibleSymbols + 1;
-            if (symbols[targetIdx]) {
-                symbols[targetIdx].classList.add('winning');
-            }
-        });
-    }
-
-    function clearWinningSymbols() {
-        document.querySelectorAll('.reel-symbol.winning').forEach(el => {
-            el.classList.remove('winning');
-        });
-    }
-
-    function showWinDisplay(amount) {
-        DOM.winAmount.textContent = '+' + formatNumber(amount);
-        DOM.winDisplay.classList.remove('hidden');
-        DOM.winDisplay.classList.add('visible');
-
-        setTimeout(() => {
-            DOM.winDisplay.classList.remove('visible');
-            DOM.winDisplay.classList.add('hidden');
-        }, 2500);
-    }
-
-    function hideWinDisplay() {
-        DOM.winDisplay.classList.remove('visible');
-        DOM.winDisplay.classList.add('hidden');
-    }
-
-    function showNearMiss() {
-        DOM.nearMissDisplay.classList.remove('hidden');
-        DOM.nearMissDisplay.classList.add('visible');
-        setTimeout(() => {
-            DOM.nearMissDisplay.classList.remove('visible');
-            DOM.nearMissDisplay.classList.add('hidden');
-        }, 1500);
-    }
-
-    function hideNearMiss() {
-        DOM.nearMissDisplay.classList.remove('visible');
-        DOM.nearMissDisplay.classList.add('hidden');
-    }
-
-    function screenShake() {
-        document.body.classList.add('screen-shake');
-        setTimeout(() => document.body.classList.remove('screen-shake'), 500);
-    }
-
-    function shakeElement(el) {
-        el.style.animation = 'nearMissShake 0.4s ease-in-out';
-        setTimeout(() => { el.style.animation = ''; }, 400);
-    }
-
-    function createFlash() {
-        const flash = document.createElement('div');
-        flash.className = 'flash-overlay';
-        document.body.appendChild(flash);
-        setTimeout(() => flash.remove(), 400);
-    }
-
-    function spawnFlyingCoins(amount) {
-        const count = Math.min(Math.ceil(amount / 50), 15);
-        for (let i = 0; i < count; i++) {
-            setTimeout(() => {
-                const coin = document.createElement('div');
-                coin.className = 'flying-coin';
-                coin.textContent = '🪙';
-                coin.style.left = (30 + Math.random() * 40) + '%';
-                coin.style.top = (40 + Math.random() * 20) + '%';
-                document.body.appendChild(coin);
-                setTimeout(() => coin.remove(), 800);
-            }, i * 80);
-        }
-    }
-
-    // ==========================================
-    // CONFETTI
-    // ==========================================
-    function launchConfetti() {
-        const canvas = DOM.confettiCanvas;
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        const confetti = [];
-        const colors = ['#FFB7C5', '#C8A2D0', '#A8E6CF', '#FFE066', '#89CFF0', '#FF85A1', '#FFCC02'];
-
-        for (let i = 0; i < 120; i++) {
-            confetti.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height - canvas.height,
-                w: 6 + Math.random() * 6,
-                h: 10 + Math.random() * 6,
-                color: colors[Math.floor(Math.random() * colors.length)],
-                vx: (Math.random() - 0.5) * 4,
-                vy: 2 + Math.random() * 4,
-                rot: Math.random() * Math.PI * 2,
-                rotSpeed: (Math.random() - 0.5) * 0.2,
-                opacity: 1,
-            });
-        }
-
-        let frame = 0;
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            let alive = false;
-
-            confetti.forEach(c => {
-                if (c.opacity <= 0) return;
-                alive = true;
-
-                c.x += c.vx;
-                c.y += c.vy;
-                c.rot += c.rotSpeed;
-                c.vy += 0.05;
-
-                if (c.y > canvas.height) {
-                    c.opacity -= 0.02;
-                }
-
-                ctx.save();
-                ctx.translate(c.x, c.y);
-                ctx.rotate(c.rot);
-                ctx.globalAlpha = c.opacity;
-                ctx.fillStyle = c.color;
-                ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
-                ctx.restore();
-            });
-
-            frame++;
-            if (alive && frame < 180) {
-                requestAnimationFrame(animate);
-            } else {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-        }
-        animate();
-    }
-
-    // ==========================================
-    // STREAK SYSTEM
-    // ==========================================
-    function updateStreak() {
-        if (state.streak >= 2) {
-            DOM.streakBadge.classList.remove('hidden');
-            DOM.streakCount.textContent = state.streak;
-            DOM.streakBadge.style.transform = 'scale(1)';
-        } else {
-            DOM.streakBadge.classList.add('hidden');
-        }
-    }
-
-    // ==========================================
-    // XP & LEVEL
-    // ==========================================
-    function addXP(amount) {
-        state.xp += amount;
-        const xpNeeded = CONFIG.xpPerLevel * state.level;
-
-        if (state.xp >= xpNeeded) {
-            state.xp -= xpNeeded;
-            state.level++;
-            state.coins += CONFIG.levelUpBonus * state.level;
-            showLevelUp();
-        }
-
-        updateHUD();
-    }
-
-    function showLevelUp() {
-        DOM.levelupNumber.textContent = state.level;
-        DOM.levelupCoins.textContent = '+' + formatNumber(CONFIG.levelUpBonus * state.level) + ' 🪙';
-        DOM.modalLevelup.classList.remove('hidden');
-        launchConfetti();
-    }
-
-    // ==========================================
-    // BIG WIN MODAL
-    // ==========================================
-    function showBigWin(amount, symbol) {
-        DOM.bigwinAmount.textContent = '+' + formatNumber(amount);
-
-        if (amount >= 1000) {
-            DOM.bigwinTitle.textContent = '🎰 ¡¡JACKPOT!! 🎰';
-        } else {
-            DOM.bigwinTitle.textContent = '¡GRAN PREMIO!';
-        }
-
-        if (symbol && symbol.img) {
-            DOM.bigwinCharacter.innerHTML = `<img src="${symbol.img}" alt="${symbol.name}">`;
-        } else {
-            DOM.bigwinCharacter.textContent = '🎁';
-        }
-
-        DOM.modalBigwin.classList.remove('hidden');
-        launchConfetti();
-    }
-
-    // ==========================================
-    // COLLECTION
-    // ==========================================
-    function tryUnlockCollectionItem() {
-        const locked = COLLECTION.filter(item => !item.unlocked);
-        if (locked.length === 0) return;
-
-        const item = locked[Math.floor(Math.random() * locked.length)];
-        item.unlocked = true;
-        saveCollection();
-
-        // Show notification
-        showCollectionNotification(item);
-    }
-
-    function showCollectionNotification(item) {
-        const notif = document.createElement('div');
-        notif.style.cssText = `
-            position: fixed;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #FFF5E1, #FFE0E8);
-            border: 2px solid var(--pink);
-            border-radius: 16px;
-            padding: 10px 20px;
-            font-family: var(--font-display);
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--dark);
-            z-index: 300;
-            box-shadow: 0 8px 24px rgba(255,183,197,0.4);
-            animation: modalPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-        `;
-        notif.innerHTML = `${item.outfit} <span>¡Nueva colección: <strong>${item.name}</strong>!</span>`;
-        document.body.appendChild(notif);
-        setTimeout(() => {
-            notif.style.transition = 'all 0.3s';
-            notif.style.opacity = '0';
-            notif.style.transform = 'translateX(-50%) translateY(-20px)';
-            setTimeout(() => notif.remove(), 300);
-        }, 2500);
-    }
-
-    function renderCollection() {
-        DOM.collectionGrid.innerHTML = '';
-        let unlockedCount = 0;
-
-        COLLECTION.forEach(item => {
-            const card = document.createElement('div');
-            const sym = CONFIG.symbols.find(s => s.id === item.char);
-            card.className = `collection-card ${item.unlocked ? 'unlocked' : 'locked'}`;
-
-            if (item.unlocked) {
-                unlockedCount++;
-                card.innerHTML = `
-                    ${sym && sym.img ? `<img src="${sym.img}" alt="${item.name}">` : ''}
-                    <div class="collection-card-name">${item.outfit} ${item.name}</div>
-                `;
-            } else {
-                card.innerHTML = `<div class="collection-card-name">???</div>`;
-            }
-
-            DOM.collectionGrid.appendChild(card);
-        });
-
-        const pct = Math.round((unlockedCount / COLLECTION.length) * 100);
-        DOM.collectionFill.style.width = pct + '%';
-        DOM.collectionText.textContent = `${unlockedCount} / ${COLLECTION.length}`;
-    }
-
-    // ==========================================
-    // DAILY BONUS
-    // ==========================================
-    const DAILY_REWARDS = [100, 200, 300, 500, 750, 1000, 2000];
-
-    function renderDailyCalendar() {
-        DOM.dailyCalendar.innerHTML = '';
-        for (let i = 0; i < 7; i++) {
-            const day = document.createElement('div');
-            day.className = 'daily-day';
-            if (i < state.dailyDay) day.classList.add('claimed');
-            if (i === state.dailyDay) day.classList.add('today');
-            day.innerHTML = `
-                <span class="day-num">${i + 1}</span>
-                <span class="day-reward">${i === 6 ? '💎' : '🪙'}</span>
-            `;
-            DOM.dailyCalendar.appendChild(day);
-        }
-
-        // Check if already claimed today
-        const lastClaim = localStorage.getItem('sanrio_lastClaim');
-        if (lastClaim === new Date().toDateString()) {
-            DOM.btnClaimDaily.disabled = true;
-            DOM.btnClaimDaily.querySelector('span').textContent = '¡Ya reclamado!';
-        } else {
-            DOM.btnClaimDaily.disabled = false;
-            DOM.btnClaimDaily.querySelector('span').textContent = '¡Reclamar!';
-        }
-    }
-
-    function claimDailyBonus() {
-        const lastClaim = localStorage.getItem('sanrio_lastClaim');
-        if (lastClaim === new Date().toDateString()) return;
-
-        const dayIdx = Math.min(state.dailyDay, 6);
-        const reward = DAILY_REWARDS[dayIdx];
-
-        if (dayIdx === 6) {
-            state.gems += 3;
-        }
-
-        state.coins += reward;
-        state.dailyDay = (state.dailyDay + 1) % 7;
-
-        localStorage.setItem('sanrio_lastClaim', new Date().toDateString());
-        saveDailyProgress();
-        saveState();
-        updateHUD();
-        renderDailyCalendar();
-
-        // Visual feedback
-        spawnFlyingCoins(reward);
-        launchConfetti();
-
-        DOM.btnClaimDaily.disabled = true;
-        DOM.btnClaimDaily.querySelector('span').textContent = '¡Ya reclamado!';
-    }
-
-    // ==========================================
-    // HUD UPDATE
-    // ==========================================
-    function updateHUD() {
-        DOM.coinCount.textContent = formatNumber(state.coins);
-        DOM.gemCount.textContent = state.gems;
-        DOM.levelNumber.textContent = state.level;
-        DOM.betValue.textContent = CONFIG.betLevels[state.betIndex];
-
-        const xpNeeded = CONFIG.xpPerLevel * state.level;
-        const pct = Math.min((state.xp / xpNeeded) * 100, 100);
-        DOM.xpBar.style.width = pct + '%';
-
-        // Animate coin count
-        animateValue(DOM.coinCount, state.coins);
-    }
-
-    function animateValue(el, finalValue) {
-        el.style.transition = 'transform 0.2s';
-        el.style.transform = 'scale(1.2)';
-        setTimeout(() => {
-            el.style.transform = 'scale(1)';
-        }, 200);
-    }
-
-    // ==========================================
-    // BET CONTROLS
-    // ==========================================
-    function betUp() {
-        if (state.isSpinning) return;
-        state.betIndex = Math.min(state.betIndex + 1, CONFIG.betLevels.length - 1);
-        DOM.betValue.textContent = CONFIG.betLevels[state.betIndex];
-        shakeElement(DOM.betValue.parentElement);
-    }
-
-    function betDown() {
-        if (state.isSpinning) return;
-        state.betIndex = Math.max(state.betIndex - 1, 0);
-        DOM.betValue.textContent = CONFIG.betLevels[state.betIndex];
-        shakeElement(DOM.betValue.parentElement);
-    }
-
-    // ==========================================
-    // AUTO SPIN
-    // ==========================================
-    function toggleAutoSpin() {
-        state.autoSpin = !state.autoSpin;
-        DOM.btnAuto.classList.toggle('active', state.autoSpin);
-
-        if (state.autoSpin && !state.isSpinning) {
-            spin();
-        }
-    }
-
-    function toggleTurbo() {
-        state.turboMode = !state.turboMode;
-        DOM.btnTurbo.classList.toggle('active', state.turboMode);
-    }
-
-    // ==========================================
-    // MODAL CONTROLS
-    // ==========================================
-    function openCollection() {
-        renderCollection();
-        DOM.modalCollection.classList.remove('hidden');
-    }
-
-    function closeCollection() {
-        DOM.modalCollection.classList.add('hidden');
-    }
-
-    function openDaily() {
-        renderDailyCalendar();
-        DOM.modalDaily.classList.remove('hidden');
-    }
-
-    function closeDaily() {
-        DOM.modalDaily.classList.add('hidden');
-    }
-
-    // ==========================================
-    // EVENT LISTENERS
-    // ==========================================
-    function bindEvents() {
-        DOM.btnSpin.addEventListener('click', spin);
-        DOM.btnBetUp.addEventListener('click', betUp);
-        DOM.btnBetDown.addEventListener('click', betDown);
-        DOM.btnAuto.addEventListener('click', toggleAutoSpin);
-        DOM.btnTurbo.addEventListener('click', toggleTurbo);
-        DOM.btnCollection.addEventListener('click', openCollection);
-        DOM.btnDaily.addEventListener('click', openDaily);
-        document.getElementById('close-collection').addEventListener('click', closeCollection);
-        document.getElementById('close-daily').addEventListener('click', closeDaily);
-        DOM.btnClaimDaily.addEventListener('click', claimDailyBonus);
-
-        document.getElementById('btn-bigwin-continue').addEventListener('click', () => {
-            DOM.modalBigwin.classList.add('hidden');
-        });
-
-        document.getElementById('btn-levelup-continue').addEventListener('click', () => {
-            DOM.modalLevelup.classList.add('hidden');
-        });
-
-        // Close modals on overlay click
-        [DOM.modalCollection, DOM.modalDaily, DOM.modalBigwin, DOM.modalLevelup].forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.classList.add('hidden');
-            });
-        });
-
-        // Keyboard shortcut (space = spin)
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                spin();
-            }
-        });
-
-        // Prevent context menu on long press
-        document.addEventListener('contextmenu', (e) => e.preventDefault());
-
-        // Window resize
-        window.addEventListener('resize', () => {
-            DOM.confettiCanvas.width = window.innerWidth;
-            DOM.confettiCanvas.height = window.innerHeight;
-        });
-    }
-
-    // ==========================================
-    // INITIALIZATION
-    // ==========================================
-    function init() {
-        cacheDom();
-        loadState();
-        initParticles();
-        initTicker();
-        initReels();
-        bindEvents();
-        updateHUD();
-
-        // Mark daily button with notification if unclaimed
-        const lastClaim = localStorage.getItem('sanrio_lastClaim');
-        if (lastClaim !== new Date().toDateString()) {
-            DOM.btnDaily.classList.add('has-notification');
-        }
-
-        // Splash micro-animation
-        setTimeout(() => {
-            DOM.slotMachine.style.animation = 'modalPop 0.6s cubic-bezier(0.34,1.56,0.64,1)';
-        }, 200);
-
-        console.log('🌸 Sanrio Slots — Kawaii Fortune initialized!');
-    }
-
-    // Start when DOM ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-
-})();
+/* SANRIO SLOTS v2 — CORE ENGINE */
+'use strict';
+
+const CONFIG = {
+    symbols: [
+        { id:'hello_kitty', name:'Hello Kitty', img:'assets/hello_kitty.png', weight:20, payout:5, power:'Lucky Charm', powerDesc:'Aumenta chance de Wild' },
+        { id:'cinnamoroll', name:'Cinnamoroll', img:'assets/cinnamoroll.png', weight:20, payout:5, power:'Cloud Shield', powerDesc:'Protege tu racha' },
+        { id:'pompompurin', name:'Pompompurin', img:'assets/pompompurin.png', weight:20, payout:5, power:'Golden Bark', powerDesc:'Multiplicador x2 de monedas' },
+        { id:'my_melody', name:'My Melody', img:'assets/my_melody.png', weight:18, payout:8, power:'Melody Grace', powerDesc:'Chance de re-spin gratis' },
+        { id:'keroppi', name:'Keroppi', img:'assets/keroppi.png', weight:15, payout:10, power:'Lily Leap', powerDesc:'Bonus de cascada extra' },
+        { id:'wild', name:'Wild ✨', img:'assets/wild.png', weight:5, payout:15, isWild:true },
+        { id:'bonus', name:'Bonus 🎁', img:null, payout:25, weight:2, isBonus:true },
+    ],
+    betLevels: [5,10,25,50,100,250,500],
+    reelCount:3, visibleSymbols:3, spinDuration:1800, reelDelay:300,
+    turboSpinDuration:600, turboReelDelay:100, nearMissChance:0.18,
+    streakMultipliers:[1,1,1.5,2,2.5,3,4,5],
+    cascadeMultipliers:[1,2,3,5,8],
+    xpPerSpin:10, xpPerWin:25, xpPerLevel:200, levelUpBonus:500,
+    miniJackpotInterval:[40,60], autoSpinDelay:800, turboAutoSpinDelay:300,
+    particleEmojis:['🌸','✨','💖','⭐','🎀','💫','🌟','🩷','♡','🦋'],
+    tickerNames:['SakuraFan','KawaiiQueen','CinnaLover','PomPomStar','MelodyDream','KittyAngel','StarryHeart','PinkCloud','BowBunny','SweetPaws'],
+    powerChance: 0.08,
+    vipTiers: [
+        { name:'Bronce', icon:'🥉', level:1, payoutBonus:0, xpBonus:1, perks:'Acceso básico al café' },
+        { name:'Plata', icon:'🥈', level:5, payoutBonus:0.1, xpBonus:1.5, perks:'+10% payout, re-spin diario gratis' },
+        { name:'Oro', icon:'🥇', level:15, payoutBonus:0.25, xpBonus:2, perks:'+25% payout, 2x XP, símbolos exclusivos' },
+        { name:'Diamante', icon:'💎', level:30, payoutBonus:0.5, xpBonus:3, perks:'+50% payout, auto-hold, 3x XP' },
+    ],
+};
+
+const COLLECTION = [
+    {id:'hk_classic',name:'Hello Kitty Clásica',char:'hello_kitty',outfit:'🎀',unlocked:false},
+    {id:'hk_princess',name:'Hello Kitty Princesa',char:'hello_kitty',outfit:'👑',unlocked:false},
+    {id:'hk_star',name:'Hello Kitty Estrella',char:'hello_kitty',outfit:'⭐',unlocked:false},
+    {id:'cn_classic',name:'Cinnamoroll Clásico',char:'cinnamoroll',outfit:'☁️',unlocked:false},
+    {id:'cn_angel',name:'Cinnamoroll Ángel',char:'cinnamoroll',outfit:'😇',unlocked:false},
+    {id:'cn_rainbow',name:'Cinnamoroll Arcoíris',char:'cinnamoroll',outfit:'🌈',unlocked:false},
+    {id:'pp_classic',name:'Pompompurin Clásico',char:'pompompurin',outfit:'🧁',unlocked:false},
+    {id:'pp_chef',name:'Pompompurin Chef',char:'pompompurin',outfit:'👨‍🍳',unlocked:false},
+    {id:'pp_explorer',name:'Pompompurin Explorador',char:'pompompurin',outfit:'🗺️',unlocked:false},
+    {id:'mm_classic',name:'My Melody Clásica',char:'my_melody',outfit:'🌷',unlocked:false},
+    {id:'mm_fairy',name:'My Melody Hada',char:'my_melody',outfit:'🧚',unlocked:false},
+    {id:'mm_night',name:'My Melody Noche',char:'my_melody',outfit:'🌙',unlocked:false},
+    {id:'kp_classic',name:'Keroppi Clásico',char:'keroppi',outfit:'🍀',unlocked:false},
+    {id:'kp_pirate',name:'Keroppi Pirata',char:'keroppi',outfit:'🏴‍☠️',unlocked:false},
+    {id:'kp_sport',name:'Keroppi Deportista',char:'keroppi',outfit:'⚽',unlocked:false},
+];
+
+const MISSIONS_POOL = [
+    {id:'m1',text:'Gana 3 veces seguidas',icon:'🔥',target:3,type:'streak',reward:500},
+    {id:'m2',text:'Consigue un Wild',icon:'⭐',target:1,type:'wild_win',reward:200},
+    {id:'m3',text:'Gira 20 veces',icon:'🎰',target:20,type:'spins',reward:300},
+    {id:'m4',text:'Gana con Cinnamoroll',icon:'☁️',target:3,type:'char_win_cinnamoroll',reward:400},
+    {id:'m5',text:'Logra una cascada x3',icon:'💥',target:1,type:'cascade_3',reward:600},
+    {id:'m6',text:'Gana con Hello Kitty',icon:'🐱',target:3,type:'char_win_hello_kitty',reward:400},
+    {id:'m7',text:'Usa Hold & Spin',icon:'🔒',target:5,type:'hold_spins',reward:350},
+    {id:'m8',text:'Gana 1000 monedas',icon:'🪙',target:1000,type:'coins_won',reward:500},
+    {id:'m9',text:'Gira 50 veces',icon:'🎰',target:50,type:'spins',reward:800},
+    {id:'m10',text:'Consigue Bonus Round',icon:'🎁',target:1,type:'bonus_round',reward:750},
+];
+
+const ACHIEVEMENTS_DATA = [
+    {id:'a1',name:'Primer Giro',desc:'Haz tu primer giro',icon:'🎰',target:1,type:'total_spins',reward:100},
+    {id:'a2',name:'Giromanía',desc:'Gira 100 veces',icon:'🎰',target:100,type:'total_spins',reward:500},
+    {id:'a3',name:'Spin Master',desc:'Gira 500 veces',icon:'🎰',target:500,type:'total_spins',reward:2000},
+    {id:'a4',name:'Eterno Girador',desc:'Gira 1000 veces',icon:'🎰',target:1000,type:'total_spins',reward:5000},
+    {id:'a5',name:'Primera Victoria',desc:'Gana por primera vez',icon:'🏆',target:1,type:'total_wins',reward:100},
+    {id:'a6',name:'Ganador Serial',desc:'Gana 50 veces',icon:'🏆',target:50,type:'total_wins',reward:1000},
+    {id:'a7',name:'Racha x3',desc:'Racha de 3 victorias',icon:'🔥',target:3,type:'best_streak',reward:300},
+    {id:'a8',name:'Racha x5',desc:'Racha de 5 victorias',icon:'🔥',target:5,type:'best_streak',reward:800},
+    {id:'a9',name:'Racha x8',desc:'Racha de 8 victorias',icon:'🔥',target:8,type:'best_streak',reward:2000},
+    {id:'a10',name:'Cascada x2',desc:'Logra cascada doble',icon:'💥',target:2,type:'best_cascade',reward:500},
+    {id:'a11',name:'Cascada x4',desc:'Logra cascada cuádruple',icon:'💥',target:4,type:'best_cascade',reward:2000},
+    {id:'a12',name:'Coleccionista',desc:'Desbloquea 5 items',icon:'🎀',target:5,type:'collection_count',reward:500},
+    {id:'a13',name:'Gran Coleccionista',desc:'Desbloquea 10 items',icon:'🎀',target:10,type:'collection_count',reward:2000},
+    {id:'a14',name:'Colección Completa',desc:'Desbloquea todos los items',icon:'🎀',target:15,type:'collection_count',reward:10000},
+    {id:'a15',name:'Nivel 5',desc:'Alcanza nivel 5',icon:'📈',target:5,type:'level',reward:500},
+    {id:'a16',name:'Nivel 10',desc:'Alcanza nivel 10',icon:'📈',target:10,type:'level',reward:1500},
+    {id:'a17',name:'Nivel 20',desc:'Alcanza nivel 20',icon:'📈',target:20,type:'level',reward:3000},
+    {id:'a18',name:'Nivel 30',desc:'Alcanza nivel 30',icon:'📈',target:30,type:'level',reward:5000},
+    {id:'a19',name:'VIP Plata',desc:'Alcanza VIP Plata',icon:'🥈',target:2,type:'vip_tier',reward:1000},
+    {id:'a20',name:'VIP Oro',desc:'Alcanza VIP Oro',icon:'🥇',target:3,type:'vip_tier',reward:3000},
+    {id:'a21',name:'VIP Diamante',desc:'Alcanza VIP Diamante',icon:'💎',target:4,type:'vip_tier',reward:10000},
+    {id:'a22',name:'Hold Master',desc:'Usa Hold 20 veces',icon:'🔒',target:20,type:'hold_uses',reward:500},
+    {id:'a23',name:'Bonus Hunter',desc:'Completa 5 Bonus Rounds',icon:'🎁',target:5,type:'bonus_rounds',reward:1500},
+    {id:'a24',name:'Millonario',desc:'Acumula 10,000 monedas',icon:'🪙',target:10000,type:'coins_ever',reward:2000},
+    {id:'a25',name:'Rico',desc:'Acumula 50,000 monedas',icon:'🪙',target:50000,type:'coins_ever',reward:5000},
+    {id:'a26',name:'Misión Cumplida',desc:'Completa 5 misiones',icon:'📋',target:5,type:'missions_done',reward:500},
+    {id:'a27',name:'Agente Completo',desc:'Completa 20 misiones',icon:'📋',target:20,type:'missions_done',reward:2000},
+    {id:'a28',name:'Jackpot!',desc:'Gana más de 1000 en un giro',icon:'💰',target:1000,type:'best_win',reward:1000},
+    {id:'a29',name:'Mega Jackpot',desc:'Gana más de 5000 en un giro',icon:'💰',target:5000,type:'best_win',reward:5000},
+    {id:'a30',name:'Kitty Lover',desc:'Gana 10 veces con Hello Kitty',icon:'🐱',target:10,type:'wins_hello_kitty',reward:500},
+    {id:'a31',name:'Cinna Fan',desc:'Gana 10 veces con Cinnamoroll',icon:'☁️',target:10,type:'wins_cinnamoroll',reward:500},
+    {id:'a32',name:'Pom Fan',desc:'Gana 10 veces con Pompompurin',icon:'🐶',target:10,type:'wins_pompompurin',reward:500},
+    {id:'a33',name:'Melody Fan',desc:'Gana 10 veces con My Melody',icon:'🐰',target:10,type:'wins_my_melody',reward:500},
+    {id:'a34',name:'Keroppi Fan',desc:'Gana 10 veces con Keroppi',icon:'🐸',target:10,type:'wins_keroppi',reward:500},
+    {id:'a35',name:'Pase Nivel 5',desc:'Alcanza nivel 5 del pase',icon:'🎫',target:5,type:'season_level',reward:300},
+    {id:'a36',name:'Pase Nivel 15',desc:'Alcanza nivel 15 del pase',icon:'🎫',target:15,type:'season_level',reward:1000},
+    {id:'a37',name:'Pase Nivel 30',desc:'Alcanza nivel 30 del pase',icon:'🎫',target:30,type:'season_level',reward:5000},
+    {id:'a38',name:'Modo Oscuro',desc:'Activa el modo oscuro',icon:'🌙',target:1,type:'dark_mode',reward:100},
+    {id:'a39',name:'Turbo Fan',desc:'Usa turbo 10 veces',icon:'⚡',target:10,type:'turbo_uses',reward:300},
+    {id:'a40',name:'Auto Spinner',desc:'Usa auto-spin 5 veces',icon:'🔄',target:5,type:'auto_uses',reward:200},
+    {id:'a41',name:'Apuesta Alta',desc:'Apuesta 500 en un giro',icon:'💸',target:500,type:'max_bet',reward:500},
+    {id:'a42',name:'Triple Wild',desc:'Consigue 3 Wilds',icon:'⭐',target:1,type:'triple_wild',reward:3000},
+    {id:'a43',name:'Primer Bonus',desc:'Completa tu primer Bonus Round',icon:'🎁',target:1,type:'bonus_rounds',reward:300},
+    {id:'a44',name:'Evento Especial',desc:'Juega durante un evento',icon:'🎪',target:1,type:'event_played',reward:200},
+    {id:'a45',name:'Gema Collector',desc:'Acumula 20 gemas',icon:'💎',target:20,type:'gems_ever',reward:500},
+    {id:'a46',name:'Power Up!',desc:'Activa un poder de personaje',icon:'⚡',target:1,type:'powers_used',reward:200},
+    {id:'a47',name:'Power Master',desc:'Activa 20 poderes',icon:'⚡',target:20,type:'powers_used',reward:1000},
+    {id:'a48',name:'Bono Diario x7',desc:'Reclama 7 bonos diarios',icon:'🎁',target:7,type:'daily_claims',reward:1000},
+    {id:'a49',name:'Torneo Top 3',desc:'Alcanza top 3 del torneo',icon:'🏆',target:1,type:'tournament_top3',reward:2000},
+    {id:'a50',name:'Leyenda Kawaii',desc:'Desbloquea 40 logros',icon:'👑',target:40,type:'achievements_done',reward:10000},
+];
+
+const SEASON_REWARDS = [];
+for(let i=1;i<=30;i++){
+    SEASON_REWARDS.push({
+        level:i,
+        free: i%5===0 ? {type:'gems',amount:3,label:'💎x3'} : {type:'coins',amount:i*100,label:`🪙x${i*100}`},
+        premium: i%10===0 ? {type:'collection',label:'🎀 Item exclusivo'} : i%3===0 ? {type:'gems',amount:2,label:'💎x2'} : {type:'coins',amount:i*150,label:`🪙x${i*150}`}
+    });
+}
+
+// ===== STATE =====
+const state = {
+    coins:1000, gems:5, level:1, xp:0, betIndex:1, streak:0,
+    totalSpins:0, totalWins:0, coinsEver:1000, gemsEver:5, bestWin:0, bestStreak:0, bestCascade:0,
+    spinsSinceJackpot:0, nextMiniJackpot:rng(40,60),
+    isSpinning:false, autoSpin:false, turboMode:false,
+    heldReels:[false,false,false], isHoldSpin:false,
+    cascadeLevel:0,
+    dailyDay:0, dailyClaimed:false,
+    missions:[], missionsCompleted:0,
+    seasonLevel:1, seasonXP:0,
+    tournamentBest:0,
+    holdUses:0, bonusRounds:0, turboUses:0, autoUses:0, powersUsed:0, dailyClaims:0, eventPlayed:false,
+    darkMode:false,
+    introSeen:false,
+    charWins:{hello_kitty:0,cinnamoroll:0,pompompurin:0,my_melody:0,keroppi:0},
+    achievementsUnlocked:{},
+    collection: COLLECTION.map(()=>false),
+    reelResults:[null,null,null],
+    eventChar:'cinnamoroll',
+};
+
+function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function weightedRandom(syms){const t=syms.reduce((s,x)=>s+x.weight,0);let r=Math.random()*t;for(const s of syms){r-=s.weight;if(r<=0)return s;}return syms[0];}
+function fmt(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toString();}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function getVipTier(){for(let i=CONFIG.vipTiers.length-1;i>=0;i--){if(state.level>=CONFIG.vipTiers[i].level)return i;}return 0;}
+function getVipData(){return CONFIG.vipTiers[getVipTier()];}
+
+// ===== PERSISTENCE =====
+function saveAll(){
+    const d = {...state, collection:COLLECTION.map(c=>c.unlocked)};
+    delete d.isSpinning; delete d.reelResults;
+    localStorage.setItem('sanrio_v2',JSON.stringify(d));
+}
+function loadAll(){
+    try{
+        const d=JSON.parse(localStorage.getItem('sanrio_v2'));
+        if(!d)return;
+        Object.keys(d).forEach(k=>{if(k==='collection'){d[k].forEach((v,i)=>{if(COLLECTION[i])COLLECTION[i].unlocked=v});}else if(k in state)state[k]=d[k];});
+    }catch(e){}
+}
+
+// ===== DOM CACHE =====
+const D={};
+function cacheDom(){
+    const ids=['coin-count','gem-count','level-number','xp-bar','streak-badge','streak-count',
+        'cascade-badge','cascade-multi','bet-value','btn-spin','spin-text','btn-bet-up','btn-bet-down',
+        'btn-auto','btn-turbo','btn-collection','btn-daily','btn-darkmode','btn-missions',
+        'btn-tournament','btn-seasonpass','btn-achievements','btn-lore','btn-vip',
+        'win-display','win-amount','win-line','near-miss-display',
+        'reel-strip-1','reel-strip-2','reel-strip-3','reel-1','reel-2','reel-3',
+        'hold-btn-1','hold-btn-2','hold-btn-3',
+        'modal-collection','collection-grid','collection-fill','collection-text',
+        'modal-daily','daily-calendar','btn-claim-daily',
+        'modal-bigwin','bigwin-title','bigwin-amount','bigwin-character',
+        'modal-levelup','levelup-number','levelup-coins',
+        'modal-bonus','bonus-grid','bonus-picks','bonus-total','btn-bonus-done',
+        'modal-missions','missions-list','close-missions',
+        'modal-tournament','tournament-table','tournament-best','close-tournament',
+        'modal-vip','vip-current-display','vip-tiers','close-vip',
+        'modal-seasonpass','sp-track','sp-fill','sp-level','close-seasonpass',
+        'modal-achievements','achievements-list','achievements-done','achievements-total','close-achievements',
+        'modal-lore','lore-characters','close-lore',
+        'confetti-canvas','particles-bg','ticker-content','slot-machine',
+        'power-flash','power-char','power-name',
+        'event-banner','event-text','event-icon','event-timer',
+        'intro-overlay','btn-intro-start','intro-particles',
+        'vip-badge','vip-tier-name',
+        'btn-bigwin-continue','btn-levelup-continue','close-collection','close-daily'];
+    ids.forEach(id=>{D[id.replace(/-/g,'_')]=document.getElementById(id);});
+    D.reelStrips=[D.reel_strip_1,D.reel_strip_2,D.reel_strip_3];
+    D.reelCont=[D.reel_1,D.reel_2,D.reel_3];
+    D.holdBtns=[D.hold_btn_1,D.hold_btn_2,D.hold_btn_3];
+}
